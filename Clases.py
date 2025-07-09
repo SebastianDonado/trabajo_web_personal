@@ -1,10 +1,13 @@
 from Conexion_fb import db
 
 class Producto:
-    def __init__(self, codigo, nombre, precio):
+    def __init__(self, codigo, nombre, precio, categoria="", subcategoria="", imagen=""):
         self.codigo = codigo
         self.nombre = nombre
         self.precio = precio
+        self.categoria = categoria
+        self.subcategoria = subcategoria
+        self.imagen = imagen
 
     def __str__(self):
         return f"[{self.codigo}] {self.nombre} - ${self.precio}"
@@ -37,7 +40,14 @@ class Restaurante:
         docs = self.db.collection("menu").stream()
         for doc in docs:
             data = doc.to_dict()
-            producto = Producto(data["codigo"], data["nombre"], data["precio"])
+            producto = Producto(
+                data.get("codigo", ""),
+                data.get("nombre", ""),
+                data.get("precio", 0),
+                data.get("categoria", ""),
+                data.get("subcategoria", ""),
+                data.get("imagen", "")
+            )
             productos.append(producto)
         return productos
 
@@ -50,7 +60,7 @@ class Restaurante:
             docs = self.db.collection("pedidos").where("estado", "==", "pendiente").stream()
             for doc in docs:
                 pedido = doc.to_dict()
-                pedido["id"] = doc.id  # Incluimos el ID del documento
+                pedido["id"] = doc.id
                 pedidos.append(pedido)
         except Exception as e:
             print(f"Error al obtener pedidos: {e}")

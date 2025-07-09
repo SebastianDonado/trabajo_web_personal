@@ -65,7 +65,8 @@ def ventana_registro(ventana_login):
 
     tk.Label(ventana, text="Rol:", bg="#F5E9CC").pack(pady=5)
     rol_var = tk.StringVar(value="Mesero")
-    tk.OptionMenu(ventana, rol_var, "Mesero", "Cocinero").pack()
+    # Añade "Administrador" a las opciones de rol
+    tk.OptionMenu(ventana, rol_var, "Mesero", "Cocinero", "Administrador").pack() 
 
     # Botones
     tk.Button(ventana, text="Registrar", command=registrar, bg="#40754C", fg="white", width=15).pack(pady=15)
