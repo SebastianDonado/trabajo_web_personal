@@ -1,185 +1,101 @@
+# Inventario.py
 import tkinter as tk
 from tkinter import ttk, messagebox
-from Clases import Restaurante, Producto
-from Conexion_fb import db
+from Clases import Producto
+from PIL import Image, ImageTk
 
-# Configuración de estilos (similar a otras ventanas)
 FONDO = "#F5E9CC"
 COLOR_ENCABEZADO = "#8B2F23"
-COLOR_BOTON_ACCION = "#40754C" # Verde para acciones positivas
-COLOR_BOTON_PELIGRO = "#8B2F23" # Rojo para eliminar (aunque no lo usaremos aquí directamente)
+COLOR_BOTON_ACCION = "#40754C"
+COLOR_BOTON_PELIGRO = "#8B2F23"
 COLOR_TEXTO = "#1D5A75"
-FUENTE_TITULO = ("Times New Roman", 16, "bold")
-FUENTE_SUBTITULO = ("Times New Roman", 12, "bold")
-FUENTE_NORMAL = ("Times New Roman", 11)
-FUENTE_ENTRADA = ("Times New Roman", 10)
+FUENTE_TITULO = ("Times New Roman", 20, "bold")
+FUENTE_NORMAL = ("Times New Roman", 14)
 
-def ventana_inventario(restaurante, nombre_usuario):
-    ventana = tk.Tk()
-    ventana.iconbitmap("Logo_migaja.ico")
-    ventana.title(f"📦 Gestión de Inventario - {nombre_usuario}")
-    ventana.geometry("700x600")
+def ventana_inventario(restaurante, nombre_usuario, return_callback):
+    ventana = tk.Toplevel()
+    ventana.title("Gestión de Inventario - La Migaja")
+    ventana.geometry("900x650")
     ventana.configure(bg=FONDO)
+    ventana.iconbitmap("Logo_migaja.ico")
 
-    main_frame = tk.Frame(ventana, bg=FONDO)
-    main_frame.pack(fill="both", expand=True, padx=20, pady=10)
+    # Título centrado
+    tk.Label(ventana, text=f"Inventario - Bienvenido {nombre_usuario}",
+             font=FUENTE_TITULO, fg=COLOR_ENCABEZADO, bg=FONDO).pack(pady=20)
 
-    canvas = tk.Canvas(main_frame, bg=FONDO, highlightthickness=0)
-    scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
-    scrollable_frame = tk.Frame(canvas, bg=FONDO)
+    # Frame principal centrado
+    main_frame = tk.Frame(ventana, bg="white", bd=2, relief="groove")
+    main_frame.pack(padx=30, pady=20, fill="both", expand=True)
 
-    scrollable_frame.bind(
-        "<Configure>",
-        lambda e: canvas.configure(
-            scrollregion=canvas.bbox("all")
-        )
-    )
+    # Tabla Treeview
+    tree = ttk.Treeview(main_frame, columns=("codigo", "nombre", "unidades", "precio"),
+                        show="headings", height=15)
+    tree.heading("codigo", text="Código")
+    tree.heading("nombre", text="Nombre")
+    tree.heading("unidades", text="Unidades")
+    tree.heading("precio", text="Precio")
 
-    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-    canvas.configure(yscrollcommand=scrollbar.set)
+    for col in ("codigo", "nombre", "unidades", "precio"):
+        tree.column(col, anchor="center", width=200)
 
-    canvas.pack(side="left", fill="both", expand=True)
+    tree.pack(pady=10, fill="both", expand=True)
+
+    # Scrollbar para Treeview
+    scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=scrollbar.set)
     scrollbar.pack(side="right", fill="y")
 
-    # Título
-    tk.Label(scrollable_frame,
-             text=f"Inventario de Productos - {nombre_usuario}",
-             font=FUENTE_TITULO,
-             bg=FONDO,
-             fg=COLOR_ENCABEZADO).pack(pady=(0, 15))
+    # Entradas de edición de unidades
+    form_frame = tk.Frame(ventana, bg=FONDO)
+    form_frame.pack(pady=10)
 
-    # --- Sección de Listado de Productos con Inventario ---
-    listado_frame = tk.LabelFrame(scrollable_frame, text="Stock Actual del Menú",
-                                  font=FUENTE_SUBTITULO, bg="white", fg=COLOR_ENCABEZADO,
-                                  padx=10, pady=10, relief="groove", borderwidth=2)
-    listado_frame.pack(fill="both", expand=True, pady=10, padx=5)
+    tk.Label(form_frame, text="Código:", font=FUENTE_NORMAL, bg=FONDO, fg=COLOR_TEXTO).grid(row=0, column=0, padx=10, pady=5, sticky="e")
+    codigo_entry = tk.Entry(form_frame, font=FUENTE_NORMAL, width=20)
+    codigo_entry.grid(row=0, column=1, padx=10, pady=5)
 
-    # Treeview para mostrar los productos y su stock
-    tree = ttk.Treeview(listado_frame, columns=("Codigo", "Nombre", "Unidades"), show="headings", height=15)
-    tree.heading("Codigo", text="Código")
-    tree.heading("Nombre", text="Nombre")
-    tree.heading("Unidades", text="Unidades")
+    tk.Label(form_frame, text="Unidades Nuevas:", font=FUENTE_NORMAL, bg=FONDO, fg=COLOR_TEXTO).grid(row=1, column=0, padx=10, pady=5, sticky="e")
+    unidades_entry = tk.Entry(form_frame, font=FUENTE_NORMAL, width=20)
+    unidades_entry.grid(row=1, column=1, padx=10, pady=5)
 
-    # Ancho de columnas
-    tree.column("Codigo", width=100, anchor="center")
-    tree.column("Nombre", width=250)
-    tree.column("Unidades", width=100, anchor="e")
+    # Botones de acción
+    btn_frame = tk.Frame(ventana, bg=FONDO)
+    btn_frame.pack(pady=15)
 
-    tree.pack(fill="both", expand=True)
+    tk.Button(btn_frame, text="Actualizar Unidades", command=lambda: actualizar_unidades(),
+              font=FUENTE_NORMAL, bg=COLOR_BOTON_ACCION, fg="white", width=20).pack(side="left", padx=15)
 
-    # Scrollbar para el Treeview
-    tree_scrollbar = ttk.Scrollbar(listado_frame, orient="vertical", command=tree.yview)
-    tree_scrollbar.pack(side="right", fill="y")
-    tree.configure(yscrollcommand=tree_scrollbar.set)
+    tk.Button(btn_frame, text="Actualizar Tabla", command=lambda: mostrar_inventario(),
+              font=FUENTE_NORMAL, bg="#007BFF", fg="white", width=20).pack(side="left", padx=15)
 
-    # --- Sección para Actualizar Unidades ---
-    update_frame = tk.LabelFrame(scrollable_frame, text="Actualizar Unidades de Producto",
-                                 font=FUENTE_SUBTITULO, bg="white", fg=COLOR_ENCABEZADO,
-                                 padx=15, pady=15, relief="groove", borderwidth=2)
-    update_frame.pack(fill="x", pady=10, padx=5)
-
-    tk.Label(update_frame, text="Código del Producto:", font=FUENTE_NORMAL, bg="white", fg=COLOR_TEXTO).grid(row=0, column=0, sticky="w", pady=5, padx=5)
-    entry_codigo_update = tk.Entry(update_frame, font=FUENTE_ENTRADA, width=20)
-    entry_codigo_update.grid(row=0, column=1, sticky="ew", pady=5, padx=5)
-    entry_codigo_update.config(state="readonly") # Inicialmente readonly para evitar edición manual
-
-    tk.Label(update_frame, text="Nuevas Unidades:", font=FUENTE_NORMAL, bg="white", fg=COLOR_TEXTO).grid(row=1, column=0, sticky="w", pady=5, padx=5)
-    entry_unidades_update = tk.Entry(update_frame, font=FUENTE_ENTRADA, width=20)
-    entry_unidades_update.grid(row=1, column=1, sticky="ew", pady=5, padx=5)
-
-    def cargar_seleccion_en_campos():
-        selected_item = tree.focus()
-        if not selected_item:
-            messagebox.showwarning("Advertencia", "Seleccione un producto de la lista para actualizar.")
-            return
-
-        values = tree.item(selected_item, "values")
-        codigo = values[0]
-        unidades = values[2]
-
-        entry_codigo_update.config(state="normal") # Habilitar para escribir
-        entry_codigo_update.delete(0, tk.END)
-        entry_codigo_update.insert(0, codigo)
-        entry_codigo_update.config(state="readonly") # Volver a deshabilitar
-
-        entry_unidades_update.delete(0, tk.END)
-        entry_unidades_update.insert(0, unidades)
-
-    def actualizar_unidades():
-        codigo = entry_codigo_update.get().strip()
-        nuevas_unidades_str = entry_unidades_update.get().strip()
-
-        if not codigo or not nuevas_unidades_str:
-            messagebox.showwarning("Advertencia", "Debe seleccionar un producto y especificar las nuevas unidades.")
-            return
-
-        try:
-            nuevas_unidades = int(nuevas_unidades_str)
-            if nuevas_unidades < 0:
-                messagebox.showwarning("Advertencia", "Las unidades no pueden ser negativas.")
-                return
-        except ValueError:
-            messagebox.showwarning("Advertencia", "Las unidades deben ser un número entero válido.")
-            return
-
-        if messagebox.askyesno("Confirmar Actualización", f"¿Desea actualizar las unidades de '{codigo}' a {nuevas_unidades}?"):
-            if restaurante.actualizar_unidades_producto(codigo, nuevas_unidades):
-                messagebox.showinfo("Éxito", "Unidades actualizadas exitosamente.")
-                mostrar_inventario() # Refrescar la lista
-                # Limpiar campos después de actualizar
-                entry_codigo_update.config(state="normal")
-                entry_codigo_update.delete(0, tk.END)
-                entry_codigo_update.config(state="readonly")
-                entry_unidades_update.delete(0, tk.END)
-            else:
-                messagebox.showerror("Error", "No se pudo actualizar las unidades.")
-
-    btn_cargar_seleccion = tk.Button(update_frame, text="Cargar Seleccionado", command=cargar_seleccion_en_campos,
-                                     bg="#FFC107", fg="black", font=FUENTE_NORMAL, width=20) # Amarillo para cargar
-    btn_cargar_seleccion.grid(row=2, column=0, pady=10, padx=5, sticky="w")
-
-    btn_actualizar_unidades = tk.Button(update_frame, text="Actualizar Unidades", command=actualizar_unidades,
-                                        bg=COLOR_BOTON_ACCION, fg="white", font=FUENTE_NORMAL, width=20)
-    btn_actualizar_unidades.grid(row=2, column=1, pady=10, padx=5, sticky="e")
+    tk.Button(btn_frame, text="Volver al Login", command=lambda: volver(),
+              font=FUENTE_NORMAL, bg=COLOR_BOTON_PELIGRO, fg="white", width=20).pack(side="left", padx=15)
 
     def mostrar_inventario():
-        # Limpiar Treeview
         for item in tree.get_children():
             tree.delete(item)
+        inventario = restaurante.obtener_inventario()
+        for producto in inventario:
+            tree.insert("", "end", values=(producto.codigo, producto.nombre, producto.unidades, f"${producto.precio}"))
 
-        productos_inventario = restaurante.obtener_inventario()
-        for prod in productos_inventario:
-            tree.insert("", "end", values=(prod.codigo, prod.nombre, prod.unidades), iid=prod.codigo)
+    def actualizar_unidades():
+        codigo = codigo_entry.get().strip()
+        unidades = unidades_entry.get().strip()
+        if not codigo or not unidades:
+            messagebox.showwarning("Advertencia", "Debes llenar ambos campos.")
+            return
+        try:
+            unidades_int = int(unidades)
+            if restaurante.actualizar_unidades_producto(codigo, unidades_int):
+                messagebox.showinfo("Éxito", f"Unidades de {codigo} actualizadas.")
+                mostrar_inventario()
+            else:
+                messagebox.showerror("Error", "Producto no encontrado.")
+        except ValueError:
+            messagebox.showerror("Error", "Unidades deben ser un número entero.")
 
-    # Botones de control de la ventana
-    control_frame = tk.Frame(scrollable_frame, bg=FONDO)
-    control_frame.pack(fill="x", pady=(20, 10))
+    def volver():
+        ventana.destroy()
+        return_callback()
 
-    tk.Button(control_frame,
-              text="🔄 Actualizar Inventario",
-              command=mostrar_inventario,
-              bg=COLOR_ENCABEZADO,
-              fg="white",
-              font=FUENTE_NORMAL).pack(side="left", padx=5)
-
-    tk.Button(control_frame,
-              text="🔙 Cerrar Sesión",
-              command=lambda: [ventana.destroy(), iniciar_app()], # Asume iniciar_app() está en Login.py
-              bg="#333333",
-              fg="white",
-              font=FUENTE_NORMAL).pack(side="right", padx=5)
-
-    # Mostrar inventario al iniciar
     mostrar_inventario()
-
     ventana.mainloop()
-
-# Función dummy para el cierre de sesión, se importará de Login.py en el uso real
-def iniciar_app():
-    pass
-
-if __name__ == "__main__":
-    # Esto es solo para probar la ventana Inventario directamente
-    # En la aplicación real, se llamará desde Login.py
-    restaurante_instance = Restaurante(db)
-    ventana_inventario(restaurante_instance, "AdminInventario")

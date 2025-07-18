@@ -76,7 +76,7 @@ def ventana_cocinero(restaurante, nombre_usuario):
             
             # Encabezado del pedido
             tk.Label(frame_pedido, 
-                    text=f"📝 Pedido #{pedido.get('id', '')} - Mesa: {pedido.get('mesa', 'S/M')}",
+                    text=f"📝 Pedido {pedido.get('codigo', 'Sin código')} - Mesa: {pedido.get('mesa', 'S/M')}",
                     font=FUENTE_TITULO,
                     bg="white",
                     anchor="w").pack(fill="x")
